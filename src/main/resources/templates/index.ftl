@@ -33,7 +33,7 @@
         <button type="submit" class="btn btn-primary">Backup</button>
       </form>
     </div>
-    <h4 class="display-4">${backup_gist_url}</h4>
+    <h6>${backup_gist_url}</h6>
   </div>
 </div>
 
