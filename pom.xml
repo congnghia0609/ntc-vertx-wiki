@@ -11,6 +11,7 @@
     <properties>
         <vertx.version>3.8.2</vertx.version>
         <main.verticle>io.vertx.starter.MainVerticle</main.verticle>
+        <!--<maven.test.skip>true</maven.test.skip>-->
     </properties>
 
     <dependencyManagement>
@@ -85,6 +86,11 @@
             <groupId>io.vertx</groupId>
             <artifactId>vertx-web-client</artifactId>
             <!--<version>${vertx.version}</version>-->
+        </dependency>
+        
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-auth-jdbc</artifactId>
         </dependency>
         
     </dependencies>

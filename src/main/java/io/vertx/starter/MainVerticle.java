@@ -32,6 +32,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.templ.freemarker.FreeMarkerTemplateEngine;
+import io.vertx.starter.http.AuthInitializerVerticle;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -86,6 +87,38 @@ public class MainVerticle extends AbstractVerticle {
 //    }
     //</editor-fold>
     
+    //<editor-fold defaultstate="collapsed" desc="Code Step 7: Run First AuthInitializerVerticle">
+//    @Override
+//    public void start(Promise<Void> promise) {
+//        Promise<String> dbDeploymentPromise = Promise.promise();
+//        vertx.deployVerticle(new WikiDatabaseVerticle(), dbDeploymentPromise);
+//
+//        Future<String> authDeploymentFuture = dbDeploymentPromise.future().compose(id -> {
+//            Promise<String> deployPromise = Promise.promise();
+//            vertx.deployVerticle(new AuthInitializerVerticle(), deployPromise);
+//            return deployPromise.future();
+//        });
+//
+//        authDeploymentFuture.compose(id -> {
+//            Promise<String> deployPromise = Promise.promise();
+//            vertx.deployVerticle(
+//                    //"io.vertx.starter.HttpServerVerticle",   // A class name as a string is also an option to specify a verticle to deploy.
+//                    HttpServerVerticle.class,
+//                    new DeploymentOptions().setInstances(2), deployPromise);
+//            return deployPromise.future();
+//        });
+//
+//        authDeploymentFuture.setHandler(ar -> {
+//            if (ar.succeeded()) {
+//                promise.complete();
+//            } else {
+//                promise.fail(ar.cause());
+//            }
+//        });
+//    }
+    //</editor-fold>
+    
+    
     @Override
     public void start(Promise<Void> promise) throws Exception {
         Promise<String> dbVerticleDeployment = Promise.promise();
@@ -109,6 +142,8 @@ public class MainVerticle extends AbstractVerticle {
             }
         });
     }
+    
+    
     
     //<editor-fold defaultstate="collapsed" desc="WebServer Handle Simple">
     private Future<Void> prepareDatabase() {

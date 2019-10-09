@@ -18,20 +18,14 @@ package io.vertx.starter.database;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
-import io.vertx.core.eventbus.Message;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
-import io.vertx.ext.sql.ResultSet;
-import io.vertx.ext.sql.SQLConnection;
 import io.vertx.serviceproxy.ServiceBinder;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Properties;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +51,8 @@ public class WikiDatabaseVerticle extends AbstractVerticle {
         CREATE_PAGE,
         SAVE_PAGE,
         DELETE_PAGE,
-        ALL_PAGES_DATA
+        ALL_PAGES_DATA,
+        GET_PAGE_BY_ID
     }
     
     public enum ErrorCodes {
@@ -87,6 +82,7 @@ public class WikiDatabaseVerticle extends AbstractVerticle {
         sqlQueries.put(SqlQuery.SAVE_PAGE, queriesProps.getProperty("save-page"));
         sqlQueries.put(SqlQuery.DELETE_PAGE, queriesProps.getProperty("delete-page"));
         sqlQueries.put(SqlQuery.ALL_PAGES_DATA, queriesProps.getProperty("all-pages-data"));
+        sqlQueries.put(SqlQuery.GET_PAGE_BY_ID, queriesProps.getProperty("get-pages-by-id"));
         return sqlQueries;
     }
     
@@ -103,7 +99,11 @@ public class WikiDatabaseVerticle extends AbstractVerticle {
                 .put("url", config().getString(CONFIG_WIKIDB_JDBC_URL, "jdbc:hsqldb:file:db/wiki"))
                 .put("driver_class", config().getString(CONFIG_WIKIDB_JDBC_DRIVER_CLASS, "org.hsqldb.jdbcDriver"))
                 .put("max_pool_size", config().getInteger(CONFIG_WIKIDB_JDBC_MAX_POOL_SIZE, 30)));
-
+//        dbClient = JDBCClient.createShared(vertx, new JsonObject()
+//                .put("url", config().getString(CONFIG_WIKIDB_JDBC_URL, DatabaseConstants.DEFAULT_WIKIDB_JDBC_URL)) // "jdbc:hsqldb:file:db/wiki"
+//                .put("driver_class", config().getString(CONFIG_WIKIDB_JDBC_DRIVER_CLASS, DatabaseConstants.DEFAULT_WIKIDB_JDBC_DRIVER_CLASS)) // "org.hsqldb.jdbcDriver"
+//                .put("max_pool_size", config().getInteger(CONFIG_WIKIDB_JDBC_MAX_POOL_SIZE, DatabaseConstants.DEFAULT_JDBC_MAX_POOL_SIZE))); // 30        
+        
         WikiDatabaseService.create(dbClient, sqlQueries, ready -> {
             if (ready.succeeded()) {
                 ServiceBinder binder = new ServiceBinder(vertx);
