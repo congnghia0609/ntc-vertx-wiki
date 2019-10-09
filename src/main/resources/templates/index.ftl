@@ -27,6 +27,14 @@
   </#list>
   </div>
 
+  <div class="col-md-12 mt-1">
+    <div class="float-left">
+      <form class="form-inline" action="/backup" method="get">
+        <button type="submit" class="btn btn-primary">Backup</button>
+      </form>
+    </div>
+    <h4 class="display-4">${backup_gist_url}</h4>
+  </div>
 </div>
 
 <#include "footer.ftl">

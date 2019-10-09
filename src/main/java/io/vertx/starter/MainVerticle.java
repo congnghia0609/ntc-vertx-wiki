@@ -1,7 +1,26 @@
+/*
+ * Copyright 2019 nghiatc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.vertx.starter;
 
+import io.vertx.starter.database.WikiDatabaseVerticle;
+import io.vertx.starter.http.HttpServerVerticle;
 import com.github.rjeschke.txtmark.Processor;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpServer;
@@ -22,7 +41,7 @@ import org.slf4j.LoggerFactory;
 /**
  * 
  * @author nghiatc
- * @since Oct 08, 2019
+ * @since Oct 8, 2019
  * 
  * cd ~/lab/labVertx/ntc-vertx-wiki
  * ./redeploy.sh
@@ -30,8 +49,14 @@ import org.slf4j.LoggerFactory;
  */
 public class MainVerticle extends AbstractVerticle {
     private static final Logger LOGGER = LoggerFactory.getLogger(MainVerticle.class);
+    
+    //<editor-fold defaultstate="collapsed" desc="Code Step1 + Step2">
     private JDBCClient dbClient;
     private FreeMarkerTemplateEngine templateEngine;
+    
+    public static final String CONFIG_HTTP_SERVER_PORT = "http.server.port";
+    public static final String CONFIG_WIKIDB_QUEUE = "wikidb.queue";
+    private String wikiDbQueue = "wikidb.queue";
 
     private static final String SQL_CREATE_PAGES_TABLE = "create table if not exists Pages (Id integer identity primary key, Name varchar(255) unique, Content clob)";
     private static final String SQL_GET_PAGE = "select Id, Content from Pages where Name = ?";
@@ -47,11 +72,36 @@ public class MainVerticle extends AbstractVerticle {
 //                .listen(8080);
 //    }
     
+//    @Override
+//    public void start(Promise<Void> promise) throws Exception {
+//        Future<Void> steps = prepareDatabase().compose(v -> startHttpServer());
+//        //steps.setHandler(promise);
+//        steps.setHandler(ar -> {
+//            if (ar.succeeded()) {
+//                promise.complete();
+//            } else {
+//                promise.fail(ar.cause());
+//            }
+//        });
+//    }
+    //</editor-fold>
+    
     @Override
     public void start(Promise<Void> promise) throws Exception {
-        Future<Void> steps = prepareDatabase().compose(v -> startHttpServer());
-        //steps.setHandler(promise);
-        steps.setHandler(ar -> {
+        Promise<String> dbVerticleDeployment = Promise.promise();
+        vertx.deployVerticle(new WikiDatabaseVerticle(), dbVerticleDeployment);
+
+        dbVerticleDeployment.future().compose(id -> {
+            System.out.println("id: " + id); // uuid: 4ce6db37-28e0-4938-bce8-a6f141c98573
+            Promise<String> httpVerticleDeployment = Promise.promise();
+            vertx.deployVerticle(
+                    //"io.vertx.starter.HttpServerVerticle",   // A class name as a string is also an option to specify a verticle to deploy.
+                    HttpServerVerticle.class,
+                    new DeploymentOptions().setInstances(2), // the number of instances to deploy = 2 HttpServerVerticle
+                    httpVerticleDeployment
+            );
+            return httpVerticleDeployment.future();
+        }).setHandler(ar -> {
             if (ar.succeeded()) {
                 promise.complete();
             } else {
@@ -60,6 +110,7 @@ public class MainVerticle extends AbstractVerticle {
         });
     }
     
+    //<editor-fold defaultstate="collapsed" desc="WebServer Handle Simple">
     private Future<Void> prepareDatabase() {
         Promise<Void> promise = Promise.promise();
 
@@ -91,6 +142,8 @@ public class MainVerticle extends AbstractVerticle {
     
     private Future<Void> startHttpServer() {
         Promise<Void> promise = Promise.promise();
+        wikiDbQueue = config().getString(CONFIG_WIKIDB_QUEUE, "wikidb.queue");
+        
         HttpServer server = vertx.createHttpServer();
 
         Router router = Router.router(vertx);
@@ -103,10 +156,11 @@ public class MainVerticle extends AbstractVerticle {
 
         templateEngine = FreeMarkerTemplateEngine.create(vertx);
 
+        int portNumber = config().getInteger(CONFIG_HTTP_SERVER_PORT, 8080);
         server.requestHandler(router)
-                .listen(8080, ar -> {
+                .listen(portNumber, ar -> {
                     if (ar.succeeded()) {
-                        LOGGER.info("HTTP server running on port 8080");
+                        LOGGER.info("HTTP server running on port " + portNumber);
                         promise.complete();
                     } else {
                         LOGGER.error("Could not start a HTTP server", ar.cause());
@@ -262,8 +316,6 @@ public class MainVerticle extends AbstractVerticle {
             }
         });
     }
-
-    
-    
+    //</editor-fold>
     
 }
