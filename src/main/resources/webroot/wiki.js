@@ -21,6 +21,7 @@ angular.module("wikiApp", [])
             var DEFAULT_PAGENAME = "Example page";
             var DEFAULT_MARKDOWN = "# Example page\n\nSome text _here_.\n";
             var clientUuid = generateUUID();
+            var eb = new EventBus(window.location.protocol + "//" + window.location.host + "/eventbus");
             
             $scope.newPage = function () {
                 $scope.pageId = undefined;
@@ -115,23 +116,23 @@ angular.module("wikiApp", [])
                 }
                 markdownRenderingPromise = $timeout(function () {
                     markdownRenderingPromise = null;
+                    // Update edit content to all User.
+                    // Case1: HTTP POST
                     $http.post("/app/markdown", text).then(function (response) {
                         $scope.updateRendering(response.data);
                     });
+                    // Case2: WebSocket
+//                    eb.send("app.markdown", text, function (err, reply) {
+//                        if (err === null) {
+//                            $scope.$apply(function () {
+//                                $scope.updateRendering(reply.body);
+//                            });
+//                        } else {
+//                            console.warn("Error rendering Markdown content: " + JSON.stringify(err));
+//                        }
+//                    });
                 }, 300);
             });
-            
-            
-            var eb = new EventBus(window.location.protocol + "//" + window.location.host + "/eventbus");
-//            eb.send("app.markdown", text, function (err, reply) {
-//                if (err === null) {
-//                    $scope.$apply(function () {
-//                        $scope.updateRendering(reply.body);
-//                    });
-//                } else {
-//                    console.warn("Error rendering Markdown content: " + JSON.stringify(err));
-//                }
-//            });
             
             eb.onopen = function () {
                 eb.registerHandler("page.saved", function (error, message) {
