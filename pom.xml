@@ -92,6 +92,20 @@
             <groupId>io.vertx</groupId>
             <artifactId>vertx-auth-jdbc</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-auth-jwt</artifactId>
+        </dependency>
+        
+<!--        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-rx-java2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-rx-java2-gen</artifactId>
+            <version>${vertx.version}</version>
+        </dependency>-->
         
     </dependencies>
 

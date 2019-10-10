@@ -50,6 +50,7 @@ import org.junit.runner.RunWith;
 public class ApiTest {
     private Vertx vertx;
     private WebClient webClient;
+    private String jwtTokenHeaderValue;
 
     @Before
     public void prepare(TestContext context) {
@@ -85,19 +86,46 @@ public class ApiTest {
     @Test
     public void play_with_api(TestContext context) {
         Async async = context.async();
+        
+        Promise<HttpResponse<String>> tokenPromise = Promise.promise();
+        webClient.get("/api/token")
+                .putHeader("login", "foo")
+                .putHeader("password", "bar")
+                .as(BodyCodec.string())
+                .send(tokenPromise);
+        Future<HttpResponse<String>> tokenFuture = tokenPromise.future();
 
         JsonObject page = new JsonObject()
                 .put("name", "Sample")
                 .put("markdown", "# A page");
 
-        Promise<HttpResponse<JsonObject>> postPagePromise = Promise.promise();
-        webClient.post("/api/pages")
-                .as(BodyCodec.jsonObject())
-                .sendJsonObject(page, postPagePromise);
-
-        Future<HttpResponse<JsonObject>> getPageFuture = postPagePromise.future().compose(resp -> {
+//        Promise<HttpResponse<JsonObject>> postPagePromise = Promise.promise();
+//        webClient.post("/api/pages")
+//                .as(BodyCodec.jsonObject())
+//                .sendJsonObject(page, postPagePromise);
+//
+//        Future<HttpResponse<JsonObject>> getPageFuture = postPagePromise.future().compose(resp -> {
+//            Promise<HttpResponse<JsonObject>> promise = Promise.promise();
+//            webClient.get("/api/pages")
+//                    .as(BodyCodec.jsonObject())
+//                    .send(promise);
+//            return promise.future();
+//        });
+        
+        Future<HttpResponse<JsonObject>> postPageFuture = tokenFuture.compose(tokenResponse -> {
+            Promise<HttpResponse<JsonObject>> promise = Promise.promise();
+            jwtTokenHeaderValue = "Bearer " + tokenResponse.body();
+            webClient.post("/api/pages")
+                    .putHeader("Authorization", jwtTokenHeaderValue)
+                    .as(BodyCodec.jsonObject())
+                    .sendJsonObject(page, promise);
+            return promise.future();
+        });
+        
+        Future<HttpResponse<JsonObject>> getPageFuture = postPageFuture.compose(resp -> {
             Promise<HttpResponse<JsonObject>> promise = Promise.promise();
             webClient.get("/api/pages")
+                    .putHeader("Authorization", jwtTokenHeaderValue)
                     .as(BodyCodec.jsonObject())
                     .send(promise);
             return promise.future();
@@ -112,6 +140,7 @@ public class ApiTest {
                     .put("id", 0)
                     .put("markdown", "Oh Yeah!");
             webClient.put("/api/pages/0")
+                    .putHeader("Authorization", jwtTokenHeaderValue)
                     .as(BodyCodec.jsonObject())
                     .sendJsonObject(data, promise);
             return promise.future();
@@ -121,6 +150,7 @@ public class ApiTest {
             context.assertTrue(resp.body().getBoolean("success"));
             Promise<HttpResponse<JsonObject>> promise = Promise.promise();
             webClient.delete("/api/pages/0")
+                    .putHeader("Authorization", jwtTokenHeaderValue)
                     .as(BodyCodec.jsonObject())
                     .send(promise);
             return promise.future();

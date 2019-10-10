@@ -17,6 +17,7 @@
 package io.vertx.starter.http;
 
 import com.github.rjeschke.txtmark.Processor;
+//import io.reactivex.Single;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
@@ -27,7 +28,13 @@ import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.JksOptions;
+import io.vertx.ext.auth.KeyStoreOptions;
+import io.vertx.ext.auth.User;
 import io.vertx.ext.auth.jdbc.JDBCAuth;
+import io.vertx.ext.auth.jwt.JWTAuth;
+import io.vertx.ext.auth.jwt.JWTAuthOptions;
+import io.vertx.ext.auth.jwt.JWTOptions;
+import io.vertx.ext.bridge.PermittedOptions;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
@@ -39,16 +46,37 @@ import io.vertx.ext.web.handler.AuthHandler;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.CookieHandler;
 import io.vertx.ext.web.handler.FormLoginHandler;
+import io.vertx.ext.web.handler.JWTAuthHandler;
 import io.vertx.ext.web.handler.RedirectAuthHandler;
 import io.vertx.ext.web.handler.SessionHandler;
+import io.vertx.ext.web.handler.StaticHandler;
 import io.vertx.ext.web.handler.UserSessionHandler;
+import io.vertx.ext.web.handler.sockjs.BridgeOptions;
+import io.vertx.ext.web.handler.sockjs.SockJSHandler;
 import io.vertx.ext.web.sstore.LocalSessionStore;
 import io.vertx.ext.web.templ.freemarker.FreeMarkerTemplateEngine;
-import io.vertx.starter.DatabaseConstants;
 import io.vertx.starter.database.WikiDatabaseService;
+import io.vertx.starter.DatabaseConstants;
 import static io.vertx.starter.database.WikiDatabaseVerticle.CONFIG_WIKIDB_JDBC_DRIVER_CLASS;
 import static io.vertx.starter.database.WikiDatabaseVerticle.CONFIG_WIKIDB_JDBC_MAX_POOL_SIZE;
 import static io.vertx.starter.database.WikiDatabaseVerticle.CONFIG_WIKIDB_JDBC_URL;
+
+//import io.vertx.starter.database.reactivex.WikiDatabaseService;
+//import io.vertx.reactivex.core.AbstractVerticle;
+//import io.vertx.reactivex.core.http.HttpServer;
+//import io.vertx.reactivex.ext.auth.User;
+//import io.vertx.reactivex.ext.auth.jdbc.JDBCAuth;
+//import io.vertx.reactivex.ext.auth.jwt.JWTAuth;
+//import io.vertx.reactivex.ext.jdbc.JDBCClient;
+//import io.vertx.reactivex.ext.web.Router;
+//import io.vertx.reactivex.ext.web.RoutingContext;
+//import io.vertx.reactivex.ext.web.client.HttpResponse;
+//import io.vertx.reactivex.ext.web.client.WebClient;
+//import io.vertx.reactivex.ext.web.codec.BodyCodec;
+//import io.vertx.reactivex.ext.web.handler.*;
+//import io.vertx.reactivex.ext.web.sstore.LocalSessionStore;
+//import io.vertx.reactivex.ext.web.templ.freemarker.FreeMarkerTemplateEngine;
+
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -61,7 +89,19 @@ import org.slf4j.LoggerFactory;
  * @author nghiatc
  * @since Oct 9, 2019
  * 
+ * // Gen Key for HTTPS
  * keytool -genkey -alias test -keyalg RSA -keystore server-keystore.jks -keysize 2048 -validity 360 -dname CN=localhost -keypass secret4321 -storepass secret4321
+ * 
+ * // Gen Key for JWT
+ * keytool -genseckey -keystore keystore.jceks -storetype jceks -storepass secret321jwt -keyalg HMacSHA256 -keysize 2048 -alias HS256 -keypass secret321jwt
+ * keytool -genseckey -keystore keystore.jceks -storetype jceks -storepass secret -keyalg HMacSHA384 -keysize 2048 -alias HS384 -keypass secret
+ * keytool -genseckey -keystore keystore.jceks -storetype jceks -storepass secret -keyalg HMacSHA512 -keysize 2048 -alias HS512 -keypass secret
+ * keytool -genkey -keystore keystore.jceks -storetype jceks -storepass secret -keyalg RSA -keysize 2048 -alias RS256 -keypass secret -sigalg SHA256withRSA -dname "CN=,OU=,O=,L=,ST=,C=" -validity 360
+ * keytool -genkey -keystore keystore.jceks -storetype jceks -storepass secret -keyalg RSA -keysize 2048 -alias RS384 -keypass secret -sigalg SHA384withRSA -dname "CN=,OU=,O=,L=,ST=,C=" -validity 360
+ * keytool -genkey -keystore keystore.jceks -storetype jceks -storepass secret -keyalg RSA -keysize 2048 -alias RS512 -keypass secret -sigalg SHA512withRSA -dname "CN=,OU=,O=,L=,ST=,C=" -validity 360
+ * keytool -genkeypair -keystore keystore.jceks -storetype jceks -storepass secret -keyalg EC -keysize 256 -alias ES256 -keypass secret -sigalg SHA256withECDSA -dname "CN=,OU=,O=,L=,ST=,C=" -validity 360
+ * keytool -genkeypair -keystore keystore.jceks -storetype jceks -storepass secret -keyalg EC -keysize 256 -alias ES384 -keypass secret -sigalg SHA384withECDSA -dname "CN=,OU=,O=,L=,ST=,C=" -validity 360
+ * keytool -genkeypair -keystore keystore.jceks -storetype jceks -storepass secret -keyalg EC -keysize 256 -alias ES512 -keypass secret -sigalg SHA512withECDSA -dname "CN=,OU=,O=,L=,ST=,C=" -validity 360
  * 
  */
 public class HttpServerVerticle extends AbstractVerticle {
@@ -77,6 +117,7 @@ public class HttpServerVerticle extends AbstractVerticle {
     @Override
     public void start(Promise<Void> promise) throws Exception {
         String wikiDbQueue = config().getString(CONFIG_WIKIDB_QUEUE, "wikidb.queue");
+//        dbService = (WikiDatabaseService) io.vertx.starter.database.WikiDatabaseService.createProxy(vertx.getDelegate(), wikiDbQueue);
         dbService = WikiDatabaseService.createProxy(vertx, wikiDbQueue);
 
         HttpServer server = vertx.createHttpServer();
@@ -105,7 +146,7 @@ public class HttpServerVerticle extends AbstractVerticle {
         router.route("/wiki/*").handler(authHandler);
         router.route("/action/*").handler(authHandler);
 
-        router.get("/").handler(this::indexHandler);
+//        router.get("/").handler(this::indexHandler);
         router.get("/wiki/:page").handler(this::pageRenderingHandler);
         router.post("/action/save").handler(this::pageUpdateHandler);
         router.post("/action/create").handler(this::pageCreateHandler);
@@ -133,6 +174,61 @@ public class HttpServerVerticle extends AbstractVerticle {
 //        router.get("/backup").handler(this::backupHandler);
         
         Router apiRouter = Router.router(vertx);
+        JWTAuth jwtAuth = JWTAuth.create(vertx, new JWTAuthOptions()
+                .setKeyStore(new KeyStoreOptions()
+                        .setPath("keystore.jceks")
+                        .setType("jceks")
+                        .setPassword("secret321jwt")));
+
+        apiRouter.route().handler(JWTAuthHandler.create(jwtAuth, "/api/token"));
+        apiRouter.get("/token").handler(context -> {
+            JsonObject creds = new JsonObject()
+                    .put("username", context.request().getHeader("login"))
+                    .put("password", context.request().getHeader("password"));
+//            auth.rxAuthenticate(creds).flatMap(user -> {
+//                Single<Boolean> create = user.rxIsAuthorized("create");
+//                Single<Boolean> delete = user.rxIsAuthorized("delete");
+//                Single<Boolean> update = user.rxIsAuthorized("update");
+//
+//                return Single.zip(create, delete, update, (canCreate, canDelete, canUpdate) -> {
+//                    return jwtAuth.generateToken(
+//                            new JsonObject()
+//                                    .put("username", context.request().getHeader("login"))
+//                                    .put("canCreate", canCreate)
+//                                    .put("canDelete", canDelete)
+//                                    .put("canUpdate", canUpdate),
+//                            new JWTOptions()
+//                                    .setSubject("Wiki API")
+//                                    .setIssuer("Vert.x"));
+//                });
+//            }).subscribe(token -> {
+//                context.response().putHeader("Content-Type", "text/plain").end(token);
+//            }, t -> context.fail(401));
+            
+            auth.authenticate(creds, authResult -> {
+                if (authResult.succeeded()) {
+                    User user = authResult.result();
+                    user.isAuthorized("create", canCreate -> {
+                        user.isAuthorized("delete", canDelete -> {
+                            user.isAuthorized("update", canUpdate -> {
+                                String token = jwtAuth.generateToken(
+                                        new JsonObject()
+                                                .put("username", context.request().getHeader("login"))
+                                                .put("canCreate", canCreate.succeeded() && canCreate.result())
+                                                .put("canDelete", canDelete.succeeded() && canDelete.result())
+                                                .put("canUpdate", canUpdate.succeeded() && canUpdate.result()),
+                                        new JWTOptions()
+                                                .setSubject("Wiki API")
+                                                .setIssuer("Vert.x"));
+                                context.response().putHeader("Content-Type", "text/plain").end(token);
+                            });
+                        });
+                    });
+                } else {
+                    context.fail(401);
+                }
+            });
+        });
         apiRouter.get("/pages").handler(this::apiRoot);
         apiRouter.get("/pages/:id").handler(this::apiGetPage);
         apiRouter.post().handler(BodyHandler.create());
@@ -142,7 +238,32 @@ public class HttpServerVerticle extends AbstractVerticle {
         apiRouter.delete("/pages/:id").handler(this::apiDeletePage);
         router.mountSubRouter("/api", apiRouter);
         
+        // Static file
+        router.get("/app/*").handler(StaticHandler.create().setCachingEnabled(false));
+        router.get("/").handler(context -> context.reroute("/app/index.html"));
+        
+        router.post("/app/markdown").handler(context -> {
+            String html = Processor.process(context.getBodyAsString());
+            context.response()
+                    .putHeader("Content-Type", "text/html")
+                    .setStatusCode(200)
+                    .end(html);
+        });
+        
+        // WebSocket
+        SockJSHandler sockJSHandler = SockJSHandler.create(vertx);
+        BridgeOptions bridgeOptions = new BridgeOptions()
+                .addInboundPermitted(new PermittedOptions().setAddress("app.markdown"))
+                .addOutboundPermitted(new PermittedOptions().setAddress("page.saved"));
+        sockJSHandler.bridge(bridgeOptions);
+        router.route("/eventbus/*").handler(sockJSHandler);
+        
+        vertx.eventBus().<String>consumer("app.markdown", msg -> {
+            String html = Processor.process(msg.body());
+            msg.reply(html);
+        });
 
+        
         templateEngine = FreeMarkerTemplateEngine.create(vertx);
 
         int portNumber = config().getInteger(CONFIG_HTTP_SERVER_PORT, 8080);
@@ -194,6 +315,7 @@ public class HttpServerVerticle extends AbstractVerticle {
         });
     }
     
+    //<editor-fold defaultstate="collapsed" desc="Code Step6">
 //    private void indexHandler(RoutingContext context) {
 //        dbService.fetchAllPages(reply -> {
 //            if (reply.succeeded()) {
@@ -216,6 +338,7 @@ public class HttpServerVerticle extends AbstractVerticle {
 //            }
 //        });
 //    }
+    //</editor-fold>
 
     private static final String EMPTY_PAGE_MARKDOWN
             = "# A new page\n"
@@ -305,6 +428,7 @@ public class HttpServerVerticle extends AbstractVerticle {
         });
     }
     
+    //<editor-fold defaultstate="collapsed" desc="Code Step6">
 //    private void pageDeletionHandler(RoutingContext context) {
 //        dbService.deletePage(Integer.valueOf(context.request().getParam("id")), reply -> {
 //            if (reply.succeeded()) {
@@ -316,6 +440,7 @@ public class HttpServerVerticle extends AbstractVerticle {
 //            }
 //        });
 //    }
+    //</editor-fold>
     
     private void backupHandler(RoutingContext context) {
         dbService.fetchAllPagesData(reply -> {
@@ -472,6 +597,12 @@ public class HttpServerVerticle extends AbstractVerticle {
         }
         dbService.savePage(id, page.getString("markdown"), reply -> {
             handleSimpleDbReply(context, reply);
+            if (reply.succeeded()) {
+                JsonObject event = new JsonObject()
+                        .put("id", id)
+                        .put("client", page.getString("client"));
+                vertx.eventBus().publish("page.saved", event);
+            }
         });
     }
     
@@ -490,12 +621,24 @@ public class HttpServerVerticle extends AbstractVerticle {
     }
     
     private void apiDeletePage(RoutingContext context) {
-        int id = Integer.valueOf(context.request().getParam("id"));
-        dbService.deletePage(id, reply -> {
-            handleSimpleDbReply(context, reply);
-        });
+        if (context.user().principal().getBoolean("canDelete", false)) {
+            int id = Integer.valueOf(context.request().getParam("id"));
+            dbService.deletePage(id, reply -> {
+                handleSimpleDbReply(context, reply);
+            });
+        } else {
+            context.fail(401);
+        }
     }
     
+    //<editor-fold defaultstate="collapsed" desc="Code Step6">
+//    private void apiDeletePage(RoutingContext context) {
+//        int id = Integer.valueOf(context.request().getParam("id"));
+//        dbService.deletePage(id, reply -> {
+//            handleSimpleDbReply(context, reply);
+//        });
+//    }
+    //</editor-fold>
     
     
     

@@ -16,6 +16,8 @@
 
 package io.vertx.starter.database;
 
+//import io.reactivex.Flowable;
+//import io.reactivex.Single;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -24,6 +26,9 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
+//import io.vertx.reactivex.SingleHelper;
+//import io.vertx.reactivex.ext.jdbc.JDBCClient;
+//import io.vertx.reactivex.ext.sql.SQLClientHelper;
 import io.vertx.starter.database.WikiDatabaseVerticle.SqlQuery;
 import java.util.HashMap;
 import java.util.List;
@@ -46,6 +51,11 @@ public class WikiDatabaseServiceImpl implements WikiDatabaseService {
         this.dbClient = dbClient;
         this.sqlQueries = sqlQueries;
 
+//        SQLClientHelper.usingConnectionSingle(this.dbClient, conn -> conn
+//                .rxExecute(sqlQueries.get(SqlQuery.CREATE_PAGES_TABLE))
+//                .andThen(Single.just(this))
+//        );
+        
         dbClient.getConnection(ar -> {
             if (ar.failed()) {
                 LOGGER.error("Could not open a database connection", ar.cause());
@@ -64,6 +74,22 @@ public class WikiDatabaseServiceImpl implements WikiDatabaseService {
             }
         });
     }
+    
+    //<editor-fold defaultstate="collapsed" desc="Code Step8">
+//    @Override
+//    public WikiDatabaseService fetchAllPages(Handler<AsyncResult<JsonArray>> resultHandler) {
+//        dbClient.rxQuery(sqlQueries.get(SqlQuery.ALL_PAGES))
+//                .flatMapPublisher(res -> {
+//                    List<JsonArray> results = res.getResults();
+//                    return Flowable.fromIterable(results);
+//                })
+//                .map(json -> json.getString(0))
+//                .sorted()
+//                .collect(JsonArray::new, JsonArray::add)
+//                .subscribe(SingleHelper.toObserver(resultHandler));
+//        return this;
+//    }
+    //</editor-fold>
     
     @Override
     public WikiDatabaseService fetchAllPages(Handler<AsyncResult<JsonArray>> resultHandler) {
@@ -148,6 +174,16 @@ public class WikiDatabaseServiceImpl implements WikiDatabaseService {
         });
         return this;
     }
+    
+    //<editor-fold defaultstate="collapsed" desc="Code Step8">
+//    @Override
+//    public WikiDatabaseService fetchAllPagesData(Handler<AsyncResult<List<JsonObject>>> resultHandler) {
+//        dbClient.rxQuery(sqlQueries.get(SqlQuery.ALL_PAGES_DATA))
+//                .map(ResultSet::getRows)
+//                .subscribe(SingleHelper.toObserver(resultHandler));
+//        return this;
+//    }
+    //</editor-fold>
     
     @Override
     public WikiDatabaseService fetchAllPagesData(Handler<AsyncResult<List<JsonObject>>> resultHandler) {

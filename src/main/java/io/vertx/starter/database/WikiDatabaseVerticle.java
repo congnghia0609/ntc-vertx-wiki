@@ -18,7 +18,10 @@ package io.vertx.starter.database;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+//import io.vertx.reactivex.core.AbstractVerticle;
+//import io.vertx.reactivex.ext.jdbc.JDBCClient;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.serviceproxy.ServiceBinder;
 import java.io.FileInputStream;
