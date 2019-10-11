@@ -185,6 +185,7 @@ public class HttpServerVerticle extends AbstractVerticle {
             JsonObject creds = new JsonObject()
                     .put("username", context.request().getHeader("login"))
                     .put("password", context.request().getHeader("password"));
+            //<editor-fold defaultstate="collapsed" desc="Code Step8">
 //            auth.rxAuthenticate(creds).flatMap(user -> {
 //                Single<Boolean> create = user.rxIsAuthorized("create");
 //                Single<Boolean> delete = user.rxIsAuthorized("delete");
@@ -204,6 +205,7 @@ public class HttpServerVerticle extends AbstractVerticle {
 //            }).subscribe(token -> {
 //                context.response().putHeader("Content-Type", "text/plain").end(token);
 //            }, t -> context.fail(401));
+            //</editor-fold>
             
             auth.authenticate(creds, authResult -> {
                 if (authResult.succeeded()) {
@@ -620,24 +622,24 @@ public class HttpServerVerticle extends AbstractVerticle {
         }
     }
     
-    private void apiDeletePage(RoutingContext context) {
-        if (context.user().principal().getBoolean("canDelete", false)) {
-            int id = Integer.valueOf(context.request().getParam("id"));
-            dbService.deletePage(id, reply -> {
-                handleSimpleDbReply(context, reply);
-            });
-        } else {
-            context.fail(401);
-        }
-    }
+//    private void apiDeletePage(RoutingContext context) {
+//        if (context.user().principal().getBoolean("canDelete", false)) {
+//            int id = Integer.valueOf(context.request().getParam("id"));
+//            dbService.deletePage(id, reply -> {
+//                handleSimpleDbReply(context, reply);
+//            });
+//        } else {
+//            context.fail(401);
+//        }
+//    }
     
     //<editor-fold defaultstate="collapsed" desc="Code Step6">
-//    private void apiDeletePage(RoutingContext context) {
-//        int id = Integer.valueOf(context.request().getParam("id"));
-//        dbService.deletePage(id, reply -> {
-//            handleSimpleDbReply(context, reply);
-//        });
-//    }
+    private void apiDeletePage(RoutingContext context) {
+        int id = Integer.valueOf(context.request().getParam("id"));
+        dbService.deletePage(id, reply -> {
+            handleSimpleDbReply(context, reply);
+        });
+    }
     //</editor-fold>
     
     
