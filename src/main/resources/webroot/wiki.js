@@ -30,6 +30,7 @@ angular.module("wikiApp", [])
                 $scope.client = clientUuid;
             };
             $scope.reload = function () {
+                $scope.pageModified = false;
                 $http.get("/api/pages").then(function (response) {
                     $scope.pages = response.data.pages;
                 });
@@ -44,6 +45,16 @@ angular.module("wikiApp", [])
                     $scope.pageName = page.name;
                     $scope.pageMarkdown = page.markdown;
                     $scope.updateRendering(page.html);
+                });
+            };
+            $scope.reloadPage = function (id) {
+                $http.get("/api/pages/" + id).then(function (response) {
+                    var page = response.data.page;
+                    $scope.pageId = page.id;
+                    $scope.pageName = page.name;
+                    $scope.pageMarkdown = page.markdown;
+                    $scope.updateRendering(page.html);
+                    $scope.pageModified = false;
                 });
             };
             $scope.updateRendering = function (html) {
@@ -107,6 +118,7 @@ angular.module("wikiApp", [])
                     alert.classList.remove("alert-danger");
                 }, 5000);
             };
+            
             $scope.reload();
             $scope.newPage();
             var markdownRenderingPromise = null;
@@ -116,21 +128,21 @@ angular.module("wikiApp", [])
                 }
                 markdownRenderingPromise = $timeout(function () {
                     markdownRenderingPromise = null;
-                    // Update edit content to all User.
+                    // Update edit content: Parse From TextMarkdown to HTML.
                     // Case1: HTTP POST
-                    $http.post("/app/markdown", text).then(function (response) {
-                        $scope.updateRendering(response.data);
-                    });
-                    // Case2: WebSocket
-//                    eb.send("app.markdown", text, function (err, reply) {
-//                        if (err === null) {
-//                            $scope.$apply(function () {
-//                                $scope.updateRendering(reply.body);
-//                            });
-//                        } else {
-//                            console.warn("Error rendering Markdown content: " + JSON.stringify(err));
-//                        }
+//                    $http.post("/app/markdown", text).then(function (response) {
+//                        $scope.updateRendering(response.data);
 //                    });
+                    // Case2: WebSocket
+                    eb.send("app.markdown", text, function (err, reply) {
+                        if (err === null) {
+                            $scope.$apply(function () {
+                                $scope.updateRendering(reply.body);
+                            });
+                        } else {
+                            console.warn("Error rendering Markdown content: " + JSON.stringify(err));
+                        }
+                    });
                 }, 300);
             });
             
